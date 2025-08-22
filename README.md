@@ -1,256 +1,57 @@
-# Multi-Agent Task Solver
+# Mini Orchestrator
 
-A modular, dynamic agent orchestration system that demonstrates **"Modular architecture allowing dynamic agent creation and execution graph"** - the high-marks requirement for this assessment.
+A simple agent orchestration system built in 12 hours.
 
-## 🎯 High-Marks Features
+## What it does
 
-### ✅ Modular Architecture
-- **Agent Isolation**: Each agent runs in complete isolation with no shared memory
-- **Dynamic Registration**: Agents can be added/removed at runtime
-- **Plugin System**: Hot-swappable agents without service restart
-- **Dependency Injection**: Clean separation of concerns
+**Agents (3):**
+- `http_fetch` – GET a URL, return text
+- `text_stats` – count lines/words/chars from the fetched text  
+- `save_mysql` – persist the stats into MySQL
 
-### ✅ Dynamic Agent Creation
-- **Runtime Registration**: Register new agents via API
-- **Configuration-Driven**: Agents defined as JSON configurations
-- **Version Management**: Support for multiple agent versions
-- **Hot Swapping**: Replace agents without downtime
+**Graph (simple chain):** http_fetch → text_stats → save_mysql
 
-### ✅ Execution Graph
-- **Complex Workflows**: Support for conditional branching, loops, and parallel execution
-- **Dynamic Graphs**: Modify execution graphs at runtime
-- **Graph Validation**: Cycle detection and dependency validation
-- **Result Merging**: Intelligent aggregation of parallel results
+**Single service:** Node.js + Express + MySQL only. No Redis, no queues.
 
-## 🏗️ Architecture Overview
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Agent        │    │   Execution     │    │   Plugin        │
-│   Registry     │◄──►│   Engine        │◄──►│   System        │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Agent        │    │   Graph         │    │   Dynamic       │
-│   Factory      │    │   Builder       │    │   API           │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 16+
-- MySQL 8.0+
-- Git
-
-### Installation
-```bash
-# Clone repository
-git clone <repository-url>
-cd multi-agent-solver
-
-# Install dependencies
-npm install
-
-# Set up environment
-cp .env.example .env
-# Edit .env with your MySQL credentials
-
-# Start the service
-npm run dev
-```
-
-### Basic Usage
-```bash
-# Process a URL through the default workflow
-curl -X POST http://localhost:3000/api/execute/graph \
-  -H "Content-Type: application/json" \
-  -d '{
-    "graph_name": "default_workflow",
-    "input": {"url": "https://example.com"}
-  }'
-```
-
-## 📋 Core Agents
-
-### 1. HttpFetchAgent
-- **Purpose**: Fetch content from URLs
-- **Features**: Timeout handling, error retry, content validation
-- **Output**: Raw text content
-
-### 2. TextStatsAgent
-- **Purpose**: Analyze text content
-- **Features**: Line count, word count, character count
-- **Output**: Statistical analysis
-
-### 3. SaveMysqlAgent
-- **Purpose**: Persist data to MySQL
-- **Features**: Connection pooling, transaction support
-- **Output**: Database record ID
-
-## 🔧 Execution Graph Examples
-
-### Simple Linear Chain
-```json
-{
-  "name": "basic_workflow",
-  "nodes": [
-    {"id": "fetch", "agent": "http_fetch"},
-    {"id": "analyze", "agent": "text_stats", "depends_on": ["fetch"]},
-    {"id": "save", "agent": "save_mysql", "depends_on": ["analyze"]}
-  ]
-}
-```
-
-### Conditional Processing
-```json
-{
-  "name": "smart_processor",
-  "nodes": [
-    {"id": "fetch", "agent": "http_fetch"},
-    {"id": "classify", "agent": "content_classifier", "depends_on": ["fetch"]},
-    {
-      "id": "process_article",
-      "agent": "article_processor",
-      "depends_on": ["classify"],
-      "condition": "classify.type === 'article'"
-    },
-    {
-      "id": "process_code",
-      "agent": "code_analyzer",
-      "depends_on": ["classify"],
-      "condition": "classify.type === 'code'"
-    }
-  ]
-}
-```
-
-### Parallel Execution
-```json
-{
-  "name": "multi_source",
-  "nodes": [
-    {"id": "fetch_1", "agent": "http_fetch", "config": {"url": "https://source1.com"}},
-    {"id": "fetch_2", "agent": "http_fetch", "config": {"url": "https://source2.com"}},
-    {
-      "id": "analyze_all",
-      "agent": "text_stats",
-      "depends_on": ["fetch_1", "fetch_2"],
-      "execution": "parallel"
-    }
-  ]
-}
-```
-
-## 🧪 Testing
+## How to run
 
 ```bash
-# Run all tests
-npm test
-
-# Run tests with coverage
-npm run test:coverage
-
-# Run tests in watch mode
-npm run test:watch
+# from the folder containing docker-compose.yml
+docker compose up --build
 ```
 
-## 📚 API Documentation
+## Try it
 
-### Agent Management
-- `POST /api/agents/register` - Register new agent
-- `GET /api/agents` - List all agents
-- `DELETE /api/agents/:name` - Remove agent
-
-### Graph Management
-- `POST /api/graphs/create` - Create new execution graph
-- `GET /api/graphs` - List all graphs
-- `PUT /api/graphs/:name` - Update graph
-- `DELETE /api/graphs/:name` - Delete graph
-
-### Execution
-- `POST /api/execute/graph` - Execute workflow
-- `GET /api/executions/:id` - Get execution status
-- `GET /api/executions` - List recent executions
-
-## 🔌 Plugin System
-
-### Creating Custom Agents
-```javascript
-// plugins/custom_analyzer.js
-class CustomAnalyzer extends BaseAgent {
-  async execute(input, context) {
-    // Your custom logic here
-    return { result: 'processed' };
-  }
-}
-
-module.exports = CustomAnalyzer;
-```
-
-### Registering Plugins
 ```bash
-# Register via API
-curl -X POST http://localhost:3000/api/agents/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "custom_analyzer",
-    "code_path": "./plugins/custom_analyzer.js",
-    "dependencies": ["text_stats"]
-  }'
+# start a run against a public text
+curl -X POST http://localhost:8080/runs \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://www.gutenberg.org/cache/epub/1342/pg1342.txt"}'
+
+# check status (replace 1 with returned run_id)
+curl http://localhost:8080/runs/1 | jq
 ```
 
-## 📊 Performance & Monitoring
+## What you'll see
 
-- **Concurrent Executions**: 100+ simultaneous workflows
-- **Agent Startup**: < 500ms
-- **Message Passing**: < 100ms latency
-- **Throughput**: 1000+ tasks/hour
-- **Uptime**: 99.9% target
+- `runs.status` moves from PENDING → RUNNING → SUCCEEDED or FAILED
+- `run_nodes` entries for each agent with outputs/errors
+- `stats_results` row with counts for the URL
 
-## 🛡️ Security Features
+## Architecture
 
-- **Agent Sandboxing**: Complete isolation between agents
-- **Input Validation**: Comprehensive request validation
-- **Rate Limiting**: API rate limiting and quota management
-- **Audit Logging**: Complete execution trail
+- **Simple linear execution** - no complex DAG logic
+- **MySQL persistence** - tracks runs, nodes, and results
+- **Basic retry/timeout** - per-node with simple backoff
+- **Minimal API** - just POST /runs and GET /runs/:id
+- **TypeScript** - for type safety and better DX
 
-## 🚀 Deployment
+## Files
 
-### Docker
-```bash
-docker-compose up -d
-```
+- `docker-compose.yml` - MySQL + Node.js setup
+- `src/db.ts` - Database connection and migration
+- `src/agents/*.ts` - The three agents
+- `src/orchestrator.ts` - Simple linear execution logic
+- `src/index.ts` - Express server with minimal endpoints
 
-### Production
-```bash
-npm run build
-NODE_ENV=production npm start
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🎯 Assessment Success Criteria
-
-This implementation successfully demonstrates:
-
-- ✅ **Modular Architecture**: Clean separation of concerns
-- ✅ **Dynamic Agent Creation**: Runtime agent management
-- ✅ **Execution Graph**: Complex workflow orchestration
-- ✅ **High-Marks Features**: Conditional logic, parallel execution, loops
-- ✅ **Production Ready**: Testing, monitoring, and documentation
-
----
-
-**Built for the AI Company Assessment - Demonstrating Enterprise-Grade Software Development Practices**
+Built for simplicity and speed. No over-engineering.
